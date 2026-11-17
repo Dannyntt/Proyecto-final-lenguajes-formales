@@ -5,9 +5,9 @@
 - Daniela Giraldo Salas
 
 ## Environment
-- Operating system: [completar, p. ej. Ubuntu 22.04 / Windows 11 / macOS 14]
+- Operating system: Windows
 - Programming language: Python 3.10 (no external libraries required)
-- Tools: [completar, p. ej. pdflatex, GNU Make]
+- Tools: pdflatex
 - No parser generators, parsing libraries, or libraries that compute
   FIRST/FOLLOW sets, LR automata, or parsing tables were used
   (no yacc, bison, ANTLR, Lark, NLTK, etc.).
