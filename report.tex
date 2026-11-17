@@ -1,0 +1,227 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[margin=2.5cm]{geometry}
+
+\title{Formal Languages --- Group Assignment}
+\author{Laura Santamaria Espinosa \and Daniela Giraldo Salas}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Algorithms and data structures}
+\paragraph{Item 1.} FIRST and FOLLOW follow Section~4.4.2 of the Dragon Book.
+Iterative fixpoint over productions. Sets stored as Python \texttt{set}.
+For every nonterminal $X$, \texttt{FIRST[X]} is initialized to $\emptyset$
+(or $\{t\}$ if $X$ is a terminal); a loop applies the three rules of
+Algorithm~4.4.2 until no set grows.
+
+\paragraph{Item 2, LL(1).} The predictive table is built with Algorithm~4.31
+(Section~4.4.3): for every $A\to\alpha$, add $A\to\alpha$ to $M[A,a]$ for every
+$a\in\mathrm{FIRST}(\alpha)$, and also to $M[A,b]$ for every $b\in\mathrm{FOLLOW}(A)$
+if $\varepsilon\in\mathrm{FIRST}(\alpha)$.
+The LL(1) test is the one at the beginning of Section~4.4.3: no cell of $M$ may
+contain more than one production. The parser is the table-driven non-recursive
+parser of Algorithm~4.34 (Section~4.4.4), with an explicit stack.
+
+\paragraph{Item 2, SLR(1).} The canonical collection of LR(0) items is built with
+\texttt{CLOSURE} and \texttt{GOTO} (Section~4.6.2), after augmenting the grammar
+with a new start symbol $S'$. The SLR(1) table follows Section~4.6.4: shifts from
+the transitions of the automaton, reduces $A\to\beta$ on $\mathrm{FOLLOW}(A)$, and
+\texttt{accept} on $\$$ for $S'\to S$. The SLR(1) test is: no cell of ACTION has
+more than one entry. The parser is the LR parsing algorithm of Section~4.6.3.
+
+\paragraph{Item 3.} The SDD is defined following Sections~5.1.1 (synthesized and
+inherited attributes), 5.1.2 (annotated parse trees), 5.2.1 (dependency graphs)
+and 5.2.2 (evaluation order). The evaluator implements the dependency-graph
+method of Section~5.2.2: for each attribute instance we create one vertex, for
+each semantic rule we add one edge from every used attribute to the defined
+attribute, and then we compute a topological order. If the graph has a cycle,
+the SDD is circular and we stop. The SDD itself is stored as \emph{data} (a
+dictionary of semantic rules), so the evaluator is independent of the particular
+SDD.
+
+\paragraph{Data structures.}
+\begin{itemize}
+\item Grammar: \texttt{list} of pairs $(A, \mathrm{rhs})$.
+\item FIRST/FOLLOW: \texttt{dict} from nonterminal to \texttt{set} of symbols.
+\item LL(1) table: \texttt{dict} from nonterminal to \texttt{dict} from terminal to list of productions.
+\item LR(0) automaton: \texttt{list} of \texttt{frozenset} of items; transitions in a \texttt{dict}.
+\item SLR(1) table: ACTION \texttt{dict} from $(state, symbol)$ to shift/reduce/accept; GOTO \texttt{dict} from $(state, nonterminal)$ to state.
+\item Parse tree: nodes with symbol, production, children and an attribute dictionary.
+\item Dependency graph: adjacency \texttt{dict} and in-degree \texttt{dict} (Kahn's algorithm).
+\end{itemize}
+
+\section{Item 1 and 2: own grammar}
+
+Grammar:
+\begin{align*}
+S &\to A \\
+A &\to BA \mid \varepsilon \\
+B &\to 0 \mid 1 \mid 2
+\end{align*}
+
+\paragraph{FIRST and FOLLOW} (computed by the program):
+\begin{verbatim}
+First(A) = {0, 1, 2, e}
+Follow(A) = {$}
+First(B) = {0, 1, 2}
+Follow(B) = {0, 1, 2, $}
+First(S) = {0, 1, 2, e}
+Follow(S) = {$}
+\end{verbatim}
+
+\paragraph{LL(1) table} (computed by the program):
+\begin{center}
+\begin{tabular}{c|cccc}
+ & 0 & 1 & 2 & \$ \\
+\hline
+S & $S\to A$ & $S\to A$ & $S\to A$ & $S\to A$ \\
+A & $A\to BA$ & $A\to BA$ & $A\to BA$ & $A\to\varepsilon$ \\
+B & $B\to 0$ & $B\to 1$ & $B\to 2$ & \\
+\end{tabular}
+\end{center}
+The grammar has no LL(1) conflicts; it is also SLR(1).
+
+\paragraph{Step-by-step parse of} \texttt{0121} with the LL(1) parser:
+\begin{center}
+\begin{tabular}{lll}
+Stack & Input & Action \\
+\hline
+$S\$ $ & $0121\$$ & $S\to A$ \\
+$A\$ $ & $0121\$$ & $A\to BA$ \\
+$BA\$ $ & $0121\$$ & $B\to 0$ \\
+$0A\$ $ & $0121\$$ & match 0 \\
+$A\$ $ & $121\$$ & $A\to BA$ \\
+$BA\$ $ & $121\$$ & $B\to 1$ \\
+$1A\$ $ & $121\$$ & match 1 \\
+$A\$ $ & $21\$$ & $A\to BA$ \\
+$BA\$ $ & $21\$$ & $B\to 2$ \\
+$2A\$ $ & $21\$$ & match 2 \\
+$A\$ $ & $1\$$ & $A\to BA$ \\
+$BA\$ $ & $1\$$ & $B\to 1$ \\
+$1A\$ $ & $1\$$ & match 1 \\
+$A\$ $ & $\$$ & $A\to\varepsilon$ \\
+$\$$ & $\$$ & accept \\
+\end{tabular}
+\end{center}
+
+\section{Item 3: SDD}
+
+\paragraph{Grammar.} The grammar above (3 nonterminals, 6 productions, $A$
+recursive, LL(1) and SLR(1)).
+
+\paragraph{Attributes.}
+\begin{center}
+\begin{tabular}{lllll}
+\toprule
+Symbol & Attribute & Kind & Type & Meaning \\
+\midrule
+$S,A$ & len & synthesized & int & length of derived substring \\
+$A$ & pos & inherited & int & starting position of the substring \\
+$B$ & pos & inherited & int & position of the digit \\
+$B$ & val & synthesized & int & value of the digit \\
+$S,A$ & sum & synthesized & int & weighted sum $\sum\, d_i \cdot (pos_i+1)$ \\
+$0,1,2$ & lexval & synthesized & char & digit read by the scanner \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Semantic rules.}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Production & Semantic rules \\
+\midrule
+$S\to A$ & $A.pos=0$;\; $S.len=A.len$;\; $S.sum=A.sum$ \\
+$A\to B A_2$ & $B.pos=A.pos$;\; $A_2.pos=A.pos+1$;\; $A.len=1+A_2.len$;\; $A.sum=B.val\cdot(B.pos+1)+A_2.sum$ \\
+$A\to\varepsilon$ & $A.len=0$;\; $A.sum=0$ \\
+$B\to 0$ & $B.val=0$ \\
+$B\to 1$ & $B.val=1$ \\
+$B\to 2$ & $B.val=2$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Subscripts are used only to distinguish body symbols from the head symbol.
+
+\paragraph{Step 3: example by hand.} Input \texttt{0121}. Parse tree and
+annotated values:
+\begin{verbatim}
+S#0 [len=4, sum=12]
++- A#1 [len=4, pos=0, sum=12]
+   +- B#2 [pos=0, val=0]
+   |  +- 0#3 [lexval=0]
+   +- A#4 [len=3, pos=1, sum=12]
+      +- B#5 [pos=1, val=1]
+      |  +- 1#6 [lexval=1]
+      +- A#7 [len=2, pos=2, sum=10]
+         +- B#8 [pos=2, val=2]
+         |  +- 2#9 [lexval=2]
+         +- A#10 [len=1, pos=3, sum=4]
+            +- B#11 [pos=3, val=1]
+            |  +- 1#12 [lexval=1]
+            +- A#13 [len=0, pos=4, sum=0]
+\end{verbatim}
+
+Computation:
+\begin{itemize}
+\item $A\#13$: len = 0, sum = 0.
+\item $A\#10$: len = 1, sum = $1\cdot(3+1)+0 = 4$.
+\item $A\#7$: len = 2, sum = $2\cdot(2+1)+4 = 10$.
+\item $A\#4$: len = 3, sum = $1\cdot(1+1)+10 = 12$.
+\item $A\#1$: len = 4, sum = $0\cdot(0+1)+12 = 12$.
+\item $S\#0$: len = 4, sum = 12. \textbf{Main value:} $S.sum = 12$.
+\end{itemize}
+
+\paragraph{Dependency graph and evaluation order.} One vertex per attribute
+instance; an edge $(u,v)$ means $v$ uses $u$. The program computes a topological
+order with Kahn's algorithm (Section~5.2.2). For \texttt{0121} a valid order is
+the post-order from right to left; the program prints it for the input.
+
+\paragraph{Step 4: classification.} The SDD is \textbf{L-attributed but not
+S-attributed}.
+It is not S-attributed because it uses the inherited attribute \texttt{pos}.
+It is L-attributed because every inherited attribute of a symbol in the body
+depends only on attributes of the head or of symbols to its left, and every
+synthesized attribute depends only on attributes of the body.
+
+\paragraph{Step 5: implementation.} The SDD is stored as a Python
+\texttt{dict} keyed by production, whose values are lists of
+\texttt{(defined, used, function)} triples. The evaluator walks the parse tree,
+instantiates the rules, builds the dependency graph, runs Kahn's algorithm, and
+evaluates the attributes in topological order. If the graph has a cycle it
+reports \texttt{circular} and stops.
+
+\paragraph{Step 6: tests.}
+\begin{itemize}
+\item Shortest string: \texttt{e}. $S.sum=0$.
+\item Single digit: \texttt{0}. $S.sum=0$.
+\item Recursive case: \texttt{0121}. $S.sum=12$.
+\item Deep nesting: \texttt{012012}. $S.sum=25$.
+\item Two digits: \texttt{12}. $S.sum=5$.
+\item Not in language: \texttt{4}. Output: \texttt{no}.
+\item Circular detection: temporarily replacing the rule of $S\to A$ by
+$S.sum = S.sum + A.sum$ makes the evaluator print \texttt{circular}.
+\end{itemize}
+
+\section{Problems and solutions}
+\begin{itemize}
+\item \emph{Avoiding the \texttt{list[:-0]} pitfall during SLR reduction.} In
+Python, \texttt{lst[:-0]} returns $[]$, not \texttt{lst}. We guard the pop with
+\texttt{if rhs:}.
+\item \emph{Iterating FIRST/FOLLOW to a fixpoint.} A naive one-pass loop gives
+wrong results; we repeat until no set changes.
+\item \emph{Distinguishing $e$ ($\varepsilon$) from a terminal in the input.} We
+treat the alternative \texttt{e} as the empty body.
+\item \emph{Detecting LL(1)/SLR(1) conflicts.} Both tables are stored as lists of
+actions; a cell with $>1$ action is a conflict.
+\item \emph{Circular SDD detection.} Kahn's algorithm leaves vertices with
+positive in-degree, which we report as \texttt{circular}.
+\end{itemize}
+
+\end{document}
